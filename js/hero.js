@@ -1,3 +1,4 @@
+// js/hero.js
 import { TEAM } from './teams.js';
 import { BATTLE_SPELLS } from './battle-spells.js';
 import { mapConfig } from './map-config.js';
@@ -9,7 +10,7 @@ export default class Hero {
         this.team = TEAM.PLAYER;
         this.isDead = false;
         this.respawnTimer = 0;
-        this.respawnTime = 5; // Waktu respawn dasar
+        this.respawnTime = 5;
         this.battleSpells = {
             recall: { data: BATTLE_SPELLS.recall, lastUsed: -Infinity, isChanneling: false, channelEndTime: 0 },
             regen: { data: BATTLE_SPELLS.regen, lastUsed: -Infinity },
@@ -58,7 +59,7 @@ export default class Hero {
         if (this.hp <= 0) {
             this.hp = 0;
             this.isDead = true;
-            this.respawnTimer = this.respawnTime + this.level * 2; // Waktu respawn meningkat dengan level
+            this.respawnTimer = this.respawnTime + this.level * 2;
             this.attackTarget = null;
             this.activeEffects = [];
         }
@@ -70,8 +71,8 @@ export default class Hero {
         if (key === this.battleSpells.recall.data.key) {
             const spell = this.battleSpells.recall;
             if (now > spell.lastUsed + spell.data.cooldown) {
-                spell.isChanneling = true;
-                spell.channelEndTime = now + spell.data.channelTime;
+                this.isChanneling = true;
+                this.channelEndTime = now + spell.data.channelTime;
             }
         }
     }
@@ -103,7 +104,6 @@ export default class Hero {
                 this.attackTarget = null;
                 return;
             }
-            // Jika sedang channeling, jangan bergerak
             return;
         }
 
@@ -128,7 +128,7 @@ export default class Hero {
             const dx = this.targetX - this.x;
             const dy = this.targetY - this.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance > 1) { // Threshold pergerakan
+            if (distance > 1) {
                 isMoving = true;
             }
         }
@@ -230,6 +230,13 @@ export default class Hero {
         }
     }
 
-    grantReward(type, amount, duration) { if (type === 'gold') { this.gold += amount; } else if (type === 'xp_buff') { this.addXp(amount); } }
+    grantReward(type, amount) { 
+        if(this.isDead) return;
+        if (type === 'gold') { 
+            this.gold += amount; 
+        } else if (type === 'xp') { 
+            this.addXp(amount); 
+        } 
+    }
     moveTo(x, y) { if (!this.isDead) { this.targetX = x; this.targetY = y; } }
 }

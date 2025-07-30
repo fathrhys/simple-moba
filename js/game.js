@@ -1,3 +1,4 @@
+// js/game.js
 import { TEAM } from './teams.js';
 import { mapConfig } from './map-config.js';
 import Camera from './camera.js';
@@ -30,8 +31,18 @@ function setupMap() {
     mapConfig.jungleCamps.forEach(c => jungleMonsters.push(new JungleMonster(c.x, c.y, c)));
 }
 
-function getEntityAt(worldX, worldY) {
-    const allTargets = [ ...towers.filter(t => t.team !== TEAM.PLAYER), ...minions.filter(m => m.team !== TEAM.PLAYER), ...jungleMonsters ];
+function getEntityAt(worldX, worldY, includeAllies = false) {
+    let allTargets = [
+        ...towers.filter(t => t.team !== TEAM.PLAYER),
+        ...minions.filter(m => m.team !== TEAM.PLAYER),
+        ...jungleMonsters
+    ];
+
+    // Jika kita ingin bisa menarget ally (untuk deny)
+    if (includeAllies) {
+        allTargets.push(...minions.filter(m => m.team === TEAM.PLAYER));
+    }
+
     for (const target of allTargets) {
         if (target.hp > 0) {
             const distance = Math.sqrt(Math.pow(target.x - worldX, 2) + Math.pow(target.y - worldY, 2));
@@ -43,6 +54,14 @@ function getEntityAt(worldX, worldY) {
 
 function getEnemiesFor(entity) {
     const allEntities = [player, ...towers, ...minions, ...jungleMonsters];
+    // Minion kini bisa menarget minion musuh dan tower
+    if (entity.constructor.name === "Minion") {
+        const enemyTeam = (entity.team === TEAM.PLAYER) ? TEAM.ENEMY : TEAM.PLAYER;
+        return [
+            ...minions.filter(e => e.hp > 0 && e.team === enemyTeam),
+            ...towers.filter(e => e.hp > 0 && e.team === enemyTeam),
+        ];
+    }
     return allEntities.filter(e => e.hp > 0 && e.team !== entity.team && e.team !== TEAM.NEUTRAL);
 }
 
@@ -67,14 +86,14 @@ function gameLoop(timestamp) {
             const spawnPointPlayer = mapConfig.basePosition[TEAM.PLAYER];
             const spawnPointEnemy = mapConfig.basePosition[TEAM.ENEMY];
             for (let i = 0; i < 5; i++) {
-                minions.push(new Minion(spawnPointPlayer.x, spawnPointPlayer.y, TEAM.PLAYER, mapConfig.lanes[laneName]));
-                minions.push(new Minion(spawnPointEnemy.x, spawnPointEnemy.y, TEAM.ENEMY, [...mapConfig.lanes[laneName]].reverse()));
+                minions.push(new Minion(spawnPointPlayer.x - i*20, spawnPointPlayer.y, TEAM.PLAYER, mapConfig.lanes[laneName]));
+                minions.push(new Minion(spawnPointEnemy.x + i*20, spawnPointEnemy.y, TEAM.ENEMY, [...mapConfig.lanes[laneName]].reverse()));
             }
         }
         minionSpawnTimer = 30;
     }
 
-    player.update(deltaTime, createParticle);
+    player.update(deltaTime, createParticle, () => getEnemiesFor(player));
     towers.forEach(t => t.update(deltaTime, getEnemiesFor(t), createParticle));
     minions.forEach(m => m.update(deltaTime, getEnemiesFor(m), createParticle));
     jungleMonsters.forEach(j => j.update(deltaTime, getAllAttackable(j), createParticle));
@@ -89,9 +108,23 @@ function gameLoop(timestamp) {
     ctx.save();
     camera.apply(ctx);
 
+    // --- START: GAMBAR VISUAL MAP ---
+    // Gambar Latar Belakang Dasar (Area Rumput/Tanah)
+    ctx.fillStyle = '#16a085'; // Warna hijau tua untuk rumput
+    ctx.fillRect(0, 0, mapConfig.world.width, mapConfig.world.height);
+
+    // Gambar Jalur (Lanes)
+    ctx.fillStyle = '#27ae60'; // Warna hijau lebih terang untuk jalur
+    ctx.fillRect(100, 200, 2800, 200); // Top Lane
+    ctx.fillRect(100, 900, 2800, 200); // Mid Lane
+    ctx.fillRect(100, 1600, 2800, 200); // Bottom Lane
+    // --- END: GAMBAR VISUAL MAP ---
+
+
     // Gambar Latar Belakang Dunia
     ctx.fillStyle = '#1e272e';
     ctx.fillRect(0, 0, mapConfig.world.width, mapConfig.world.height);
+    
     // Gambar Tembok
     ctx.fillStyle = '#2c3e50';
     mapConfig.walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
@@ -115,10 +148,25 @@ canvas.addEventListener('contextmenu', e => {
     const rect = canvas.getBoundingClientRect();
     const worldX = e.clientX - rect.left + camera.x;
     const worldY = e.clientY - rect.top + camera.y;
-    const target = getEntityAt(worldX, worldY);
-    if (target) { player.setAttackTarget(target); }
-    else { player.clearAttackTarget(); player.moveTo(worldX, worldY); }
+
+    // Cek apakah target adalah minion kawan yang bisa di-deny
+    const potentialTarget = getEntityAt(worldX, worldY, true); // `true` untuk memasukkan ally
+    if (potentialTarget && potentialTarget.team === TEAM.PLAYER && potentialTarget.constructor.name === 'Minion') {
+        // Hanya bisa deny jika HP minion di bawah 50%
+        if (potentialTarget.hp / potentialTarget.maxHp < 0.5) {
+            player.setAttackTarget(potentialTarget);
+        } else {
+            player.clearAttackTarget();
+            player.moveTo(worldX, worldY);
+        }
+    } else if (potentialTarget) { // Target musuh atau jungle
+        player.setAttackTarget(potentialTarget);
+    } else { // Tidak ada target, hanya bergerak
+        player.clearAttackTarget();
+        player.moveTo(worldX, worldY);
+    }
 });
+
 
 window.addEventListener('keydown', e => {
     const key = e.key.toLowerCase();
