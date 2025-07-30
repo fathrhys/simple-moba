@@ -6,7 +6,7 @@ export default class Hero {
         // Properti dasar
         this.x = x; this.y = y; this.size = 15;
         this.color = '#3498db'; this.targetX = x; this.targetY = y;
-        this.team = TEAM.PLAYER; // Tetapkan tim untuk hero
+        this.team = TEAM.PLAYER;
 
         // Sistem Progresi
         this.level = 1; this.xp = 0; this.gold = 600;
@@ -15,10 +15,16 @@ export default class Hero {
         // Stats Dasar
         this.baseMaxHp = 300; this.baseDamage = 30; this.baseSpeed = 200;
         
-        // Stats Total (dihitung ulang)
+        // Stats Total
         this.totalMaxHp = 0; this.totalDamage = 0; this.totalSpeed = 0;
         this.totalReturnDamage = 0;
         this.hp = this.baseMaxHp;
+
+        // Properti Baru untuk Serangan Dasar
+        this.attackTarget = null; // Target yang dikunci untuk diserang
+        this.attackRange = 150;   // Jarak serangan dasar hero
+        this.attackCooldown = 1.2; // Waktu antar serangan dasar (detik)
+        this.lastAttackTime = 0;
 
         // Definisi Skills
         this.skills = {
@@ -31,7 +37,86 @@ export default class Hero {
         this.activeEffects = [];
         this.recalculateStats();
     }
+    
+    // Metode Baru untuk Mengontrol Target Serangan
+    setAttackTarget(target) {
+        this.attackTarget = target;
+    }
+    
+    clearAttackTarget() {
+        this.attackTarget = null;
+    }
 
+    // Fungsi untuk Melakukan Serangan Dasar
+    basicAttack(createParticle) {
+        const now = performance.now() / 1000;
+        if (this.attackTarget && this.attackTarget.hp > 0 && now > this.lastAttackTime + this.attackCooldown) {
+            console.log(`Hero melakukan serangan dasar ke ${this.attackTarget.constructor.name}`);
+            createParticle(this.x, this.y, 'projectile', this.attackTarget, this.totalDamage, this);
+            this.lastAttackTime = now;
+        }
+    }
+
+    // Metode Update yang Dirombak Total
+    update(dt, createParticle) {
+        if (this.hp <= 0) return;
+        const now = performance.now() / 1000;
+        this.activeEffects = this.activeEffects.filter(eff => now < eff.endTime);
+
+        let currentSpeed = this.totalSpeed;
+        const speedBoostEffect = this.activeEffects.find(eff => eff.type === 'speed_boost');
+        if (speedBoostEffect) {
+            currentSpeed *= (1 + speedBoostEffect.value / 100);
+        }
+
+        // Logika Utama: Serang atau Bergerak
+        if (this.attackTarget && this.attackTarget.hp > 0) {
+            const dx = this.attackTarget.x - this.x;
+            const dy = this.attackTarget.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= this.attackRange) {
+                // Jika dalam jangkauan, berhenti bergerak dan serang
+                this.basicAttack(createParticle);
+            } else {
+                // Jika di luar jangkauan, bergerak mendekati target
+                this.x += (dx / distance) * currentSpeed * dt;
+                this.y += (dy / distance) * currentSpeed * dt;
+            }
+        } else {
+            // Jika tidak ada target serangan, bergerak ke titik tujuan biasa
+            const dx = this.targetX - this.x;
+            const dy = this.targetY - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > 1) {
+                this.x += (dx / distance) * currentSpeed * dt;
+                this.y += (dy / distance) * currentSpeed * dt;
+            }
+        }
+    }
+
+    // Metode Draw yang Diperbarui
+    draw(ctx) {
+        const originalColor = this.color;
+        if (this.activeEffects.find(e => e.type === 'speed_boost')) ctx.fillStyle = '#f39c12';
+        else if (this.activeEffects.find(e => e.type === 'defense_boost')) ctx.fillStyle = '#a569bd';
+        else ctx.fillStyle = originalColor;
+        if (this.hp <= 0) ctx.fillStyle = '#7f8c8d';
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = originalColor;
+
+        // Gambar lingkaran jangkauan serangan dasar
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.attackRange, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    
+    // Sisa Metode Lainnya (Lengkap dan Tidak Berubah)
     recalculateStats() {
         let bonusHp = 0, bonusDamage = 0, bonusSpeed = 0, bonusReturnDamage = 0;
         this.items.forEach(item => {
@@ -89,11 +174,9 @@ export default class Hero {
             finalDamage *= (1 - defenseEffect.value / 100);
         }
         this.hp -= finalDamage;
-
         if (this.totalReturnDamage > 0 && source && source.takeDamage) {
             source.takeDamage(this.totalReturnDamage, this);
         }
-
         if (this.hp <= 0) {
             this.hp = 0;
             this.color = '#7f8c8d';
@@ -133,43 +216,10 @@ export default class Hero {
         }
     }
 
-    moveTo(x, y) { if (this.hp > 0) { this.targetX = x; this.targetY = y; } }
-
-    update(dt) {
-        if (this.hp <= 0) return;
-        const now = performance.now() / 1000;
-        this.activeEffects = this.activeEffects.filter(eff => now < eff.endTime);
-
-        let currentSpeed = this.totalSpeed;
-        const speedBoostEffect = this.activeEffects.find(eff => eff.type === 'speed_boost');
-        if (speedBoostEffect) {
-            currentSpeed *= (1 + speedBoostEffect.value / 100);
+    moveTo(x, y) {
+        if (this.hp > 0) {
+            this.targetX = x;
+            this.targetY = y;
         }
-
-        const dx = this.targetX - this.x;
-        const dy = this.targetY - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance > 1) {
-            this.x += (dx / distance) * currentSpeed * dt;
-            this.y += (dy / distance) * currentSpeed * dt;
-        }
-    }
-
-    draw(ctx) {
-        const originalColor = this.color;
-
-        if (this.activeEffects.find(e => e.type === 'speed_boost')) ctx.fillStyle = '#f39c12';
-        else if (this.activeEffects.find(e => e.type === 'defense_boost')) ctx.fillStyle = '#a569bd';
-        else ctx.fillStyle = originalColor;
-
-        if (this.hp <= 0) {
-            ctx.fillStyle = '#7f8c8d';
-        }
-
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = originalColor;
     }
 }
