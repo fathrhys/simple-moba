@@ -1,6 +1,6 @@
-// js/game.js
 import { TEAM } from './teams.js';
 import { mapConfig } from './map-config.js';
+import Camera from './camera.js';
 import Hero from './hero.js';
 import Tower from './tower.js';
 import Minion from './minion.js';
@@ -8,13 +8,15 @@ import JungleMonster from './jungle-monster.js';
 import Particle from './particle.js';
 import { UI } from './ui.js';
 import { Shop } from './shop.js';
+import { BATTLE_SPELLS } from './battle-spells.js';
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const shop = new Shop();
 const ui = new UI(canvas, shop);
 
-const player = new Hero(200, 360);
+const camera = new Camera(canvas, mapConfig.world.width, mapConfig.world.height);
+const player = new Hero(mapConfig.basePosition[TEAM.PLAYER].x, mapConfig.basePosition[TEAM.PLAYER].y);
 let towers = [];
 let minions = [];
 let jungleMonsters = [];
@@ -28,18 +30,12 @@ function setupMap() {
     mapConfig.jungleCamps.forEach(c => jungleMonsters.push(new JungleMonster(c.x, c.y, c)));
 }
 
-function getEntityAt(mouseX, mouseY) {
-    const allTargets = [
-        ...towers.filter(t => t.team !== TEAM.PLAYER),
-        ...minions.filter(m => m.team !== TEAM.PLAYER),
-        ...jungleMonsters
-    ];
+function getEntityAt(worldX, worldY) {
+    const allTargets = [ ...towers.filter(t => t.team !== TEAM.PLAYER), ...minions.filter(m => m.team !== TEAM.PLAYER), ...jungleMonsters ];
     for (const target of allTargets) {
         if (target.hp > 0) {
-            const distance = Math.sqrt(Math.pow(target.x - mouseX, 2) + Math.pow(target.y - mouseY, 2));
-            if (distance <= target.size + 5) { // Beri sedikit toleransi hitbox
-                return target;
-            }
+            const distance = Math.sqrt(Math.pow(target.x - worldX, 2) + Math.pow(target.y - worldY, 2));
+            if (distance <= target.size + 5) { return target; }
         }
     }
     return null;
@@ -51,7 +47,7 @@ function getEnemiesFor(entity) {
 }
 
 function getAllAttackable(entity) {
-    const allEntities = [player, ...minions];
+    const allEntities = [player, ...minions, ...towers];
     return allEntities.filter(e => e.hp > 0 && e.team !== TEAM.NEUTRAL);
 }
 
@@ -63,14 +59,16 @@ function gameLoop(timestamp) {
     const deltaTime = (timestamp - lastTime) / 1000 || 0;
     lastTime = timestamp;
 
+    camera.update(player);
+
     minionSpawnTimer -= deltaTime;
     if (minionSpawnTimer <= 0) {
         for (const laneName in mapConfig.lanes) {
-            const spawnPointPlayer = mapConfig.lanes[laneName][0];
-            const spawnPointEnemy = mapConfig.lanes[laneName][mapConfig.lanes[laneName].length - 1];
+            const spawnPointPlayer = mapConfig.basePosition[TEAM.PLAYER];
+            const spawnPointEnemy = mapConfig.basePosition[TEAM.ENEMY];
             for (let i = 0; i < 5; i++) {
                 minions.push(new Minion(spawnPointPlayer.x, spawnPointPlayer.y, TEAM.PLAYER, mapConfig.lanes[laneName]));
-                minions.push(new Minion(spawnPointEnemy.x, spawnPointEnemy.y, TEAM.ENEMY, mapConfig.lanes[laneName]));
+                minions.push(new Minion(spawnPointEnemy.x, spawnPointEnemy.y, TEAM.ENEMY, [...mapConfig.lanes[laneName]].reverse()));
             }
         }
         minionSpawnTimer = 30;
@@ -86,12 +84,26 @@ function gameLoop(timestamp) {
     jungleMonsters = jungleMonsters.filter(j => !j.shouldBeRemoved);
     particles = particles.filter(p => !p.shouldBeRemoved);
 
+    camera.reset(ctx);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    camera.apply(ctx);
+
+    // Gambar Latar Belakang Dunia
+    ctx.fillStyle = '#1e272e';
+    ctx.fillRect(0, 0, mapConfig.world.width, mapConfig.world.height);
+    // Gambar Tembok
+    ctx.fillStyle = '#2c3e50';
+    mapConfig.walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
+
     towers.forEach(t => t.draw(ctx));
     minions.forEach(m => m.draw(ctx));
     jungleMonsters.forEach(j => j.draw(ctx));
     player.draw(ctx);
     particles.forEach(p => p.draw(ctx));
+
+    ctx.restore();
+    
     ui.draw(ctx, player, hoveredSkillKey);
 
     requestAnimationFrame(gameLoop);
@@ -99,23 +111,21 @@ function gameLoop(timestamp) {
 
 canvas.addEventListener('contextmenu', e => {
     e.preventDefault();
+    if(player.isDead) return;
     const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const target = getEntityAt(mouseX, mouseY);
-    if (target) {
-        player.setAttackTarget(target);
-    } else {
-        player.clearAttackTarget();
-        player.moveTo(mouseX, mouseY);
-    }
+    const worldX = e.clientX - rect.left + camera.x;
+    const worldY = e.clientY - rect.top + camera.y;
+    const target = getEntityAt(worldX, worldY);
+    if (target) { player.setAttackTarget(target); }
+    else { player.clearAttackTarget(); player.moveTo(worldX, worldY); }
 });
 
 window.addEventListener('keydown', e => {
     const key = e.key.toLowerCase();
     if (player.skills[key]) {
         player.useSkill(key, () => getEnemiesFor(player), createParticle);
+    } else if (key === BATTLE_SPELLS.recall.key || (BATTLE_SPELLS.regen && key === BATTLE_SPELLS.regen.key)) {
+        player.useBattleSpell(key);
     } else if (key === 'b') {
         shop.toggle();
     } else if (shop.isOpen && !isNaN(parseInt(key))) {
@@ -130,9 +140,7 @@ canvas.addEventListener('click', e => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     const clickedSkillKey = ui.checkUpgradeButtonClick(mouseX, mouseY);
-    if (clickedSkillKey) {
-        player.upgradeSkill(clickedSkillKey);
-    }
+    if (clickedSkillKey) { player.upgradeSkill(clickedSkillKey); }
 });
 
 canvas.addEventListener('mousemove', e => {
@@ -142,9 +150,7 @@ canvas.addEventListener('mousemove', e => {
     hoveredSkillKey = ui.checkSkillIconHover(mouseX, mouseY);
 });
 
-canvas.addEventListener('mouseout', e => {
-    hoveredSkillKey = null;
-});
+canvas.addEventListener('mouseout', e => { hoveredSkillKey = null; });
 
 setupMap();
 requestAnimationFrame(gameLoop);

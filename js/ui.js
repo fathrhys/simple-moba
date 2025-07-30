@@ -10,11 +10,22 @@ export class UI {
     draw(ctx, hero, hoveredSkillKey) {
         this.upgradeButtons = [];
         this.skillIconRects = [];
-        this.drawPlayerStats(ctx, hero);
-        this.drawSkills(ctx, hero);
-        this.drawItems(ctx, hero);
-        if (this.shop.isOpen) { this.drawShop(ctx, hero); }
-        if (hoveredSkillKey) { this.drawTooltip(ctx, hero, hoveredSkillKey); }
+        
+        if (!hero.isDead) {
+            this.drawPlayerStats(ctx, hero);
+            this.drawSkills(ctx, hero);
+            this.drawItems(ctx, hero);
+            if (this.shop.isOpen) { this.drawShop(ctx, hero); }
+            if (hoveredSkillKey) { this.drawTooltip(ctx, hero, hoveredSkillKey); }
+        } else {
+            // Tampilan saat mati
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Respawn dalam: ${hero.respawnTimer.toFixed(1)}`, this.canvas.width / 2, this.canvas.height / 2);
+        }
     }
 
     checkUpgradeButtonClick(mouseX, mouseY) {
@@ -26,7 +37,7 @@ export class UI {
         }
         return null;
     }
-
+    
     checkSkillIconHover(mouseX, mouseY) {
         for (const rect of this.skillIconRects) {
             if (mouseX >= rect.x && mouseX <= rect.x + rect.width &&
@@ -36,55 +47,42 @@ export class UI {
         }
         return null;
     }
-
+    
     drawSkills(ctx, hero) {
         const now = performance.now() / 1000;
         Object.values(hero.skills).forEach((skill, i) => {
             const x = 250 + i * 70, y = this.canvas.height - 100, size = 60;
             this.skillIconRects.push({ x, y, width: size, height: size, key: skill.key });
-
             ctx.fillStyle = skill.level > 0 ? '#2c3e50' : '#7f8c8d';
             ctx.fillRect(x, y, size, size);
             ctx.strokeStyle = 'white';
             ctx.strokeRect(x, y, size, size);
-
             ctx.fillStyle = 'white';
             ctx.font = '24px Arial';
             ctx.textAlign = 'center';
             ctx.fillText(skill.key.toUpperCase(), x + size / 2, y + 40);
-
             ctx.font = '12px Arial';
             ctx.textAlign = 'right';
             ctx.fillStyle = 'white';
             ctx.fillText(skill.level, x + size - 5, y + 15);
-
             if (hero.canUpgradeSkill(skill.key)) {
                 const btnSize=20, btnX=x+size-btnSize/2, btnY=y-btnSize/2;
-                ctx.fillStyle='gold';
-                ctx.fillRect(btnX,btnY,btnSize,btnSize);
-                ctx.strokeStyle='black';
-                ctx.lineWidth=2;
-                ctx.strokeRect(btnX,btnY,btnSize,btnSize);
-                ctx.fillStyle='black';
-                ctx.font='20px Arial';
-                ctx.textAlign='center';
+                ctx.fillStyle='gold'; ctx.fillRect(btnX,btnY,btnSize,btnSize);
+                ctx.strokeStyle='black'; ctx.lineWidth=2; ctx.strokeRect(btnX,btnY,btnSize,btnSize);
+                ctx.fillStyle='black'; ctx.font='20px Arial'; ctx.textAlign='center';
                 ctx.fillText('+',btnX+btnSize/2,btnY+btnSize-4);
                 this.upgradeButtons.push({x:btnX,y:btnY,width:btnSize,height:btnSize,key:skill.key});
             }
-
             const cooldownLeft = Math.max(0, (skill.lastUsed + skill.cooldown) - now);
             if (cooldownLeft > 0) {
-                ctx.fillStyle='rgba(0,0,0,0.7)';
-                ctx.fillRect(x,y,size,size*(cooldownLeft/skill.cooldown));
-                ctx.fillStyle='white';
-                ctx.font='28px Arial';
-                ctx.textAlign='center';
+                ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(x,y,size,size*(cooldownLeft/skill.cooldown));
+                ctx.fillStyle='white'; ctx.font='28px Arial'; ctx.textAlign='center';
                 ctx.fillText(cooldownLeft.toFixed(1),x+size/2,y+42);
             }
         });
         ctx.lineWidth = 1;
     }
-
+    
     drawTooltip(ctx, hero, skillKey) {
         const skill = hero.skills[skillKey];
         const dynamicValues = skill.getDynamicValues(hero);
@@ -96,7 +94,6 @@ export class UI {
         if (dynamicValues.speed_boost !== undefined) valueText += `Bonus Kecepatan: +${dynamicValues.speed_boost}%\n`;
         if (dynamicValues.damage_reduction !== undefined) valueText += `Pengurangan Damage: ${dynamicValues.damage_reduction}%\n`;
         const lines = [nameText, "---", descText, "---", ...valueText.split('\n').filter(l => l)];
-        
         ctx.font = '14px Arial';
         let maxWidth = 0;
         lines.forEach(line => {
@@ -108,18 +105,15 @@ export class UI {
         const iconRect = this.skillIconRects.find(r => r.key === skillKey);
         const boxX = iconRect.x - boxWidth / 2 + iconRect.width / 2;
         const boxY = iconRect.y - boxHeight - 10;
-
         ctx.fillStyle='rgba(0,0,0,0.85)';
         ctx.fillRect(boxX,boxY,boxWidth,boxHeight);
         ctx.strokeStyle='gold';
         ctx.strokeRect(boxX,boxY,boxWidth,boxHeight);
         ctx.fillStyle='white';
         ctx.textAlign='left';
-        lines.forEach((line, i) => {
-            ctx.fillText(line, boxX + 10, boxY + 20 + i * 18);
-        });
+        lines.forEach((line, i) => { ctx.fillText(line, boxX + 10, boxY + 20 + i * 18); });
     }
-
+    
     drawPlayerStats(ctx, hero) {
         ctx.fillStyle='rgba(0,0,0,0.7)';
         ctx.fillRect(0,this.canvas.height-120,this.canvas.width,120);
@@ -146,6 +140,7 @@ export class UI {
         ctx.fillStyle='#f1c40f';
         ctx.fillRect(20,this.canvas.height-45,200*xpRatio,10);
     }
+    
     drawItems(ctx, hero) {
         for (let i = 0; i < 6; i++) {
             const x = 580 + i * 55, y = this.canvas.height - 100;
@@ -163,6 +158,7 @@ export class UI {
             }
         }
     }
+    
     drawShop(ctx, hero) {
         const shopX = 200, shopY = 100, shopW = 600, shopH = 400;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
