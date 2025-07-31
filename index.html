@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple MOBA v5 - Informative UI!</title>
+    <title>Simple MOBA v6 - Pathfinding!</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Prototipe MOBA v5 - The Smart Interface</h1>
-    <p>Arahkan mouse ke ikon skill untuk info. Klik tombol '+' untuk upgrade. Klik kanan untuk bergerak.</p>
+    <h1>Prototipe MOBA v6 - Smart Pathfinding</h1>
+    <p>Sekarang hero bisa mencari jalan memutari tembok! Klik kanan untuk bergerak.</p>
     <canvas id="gameCanvas" width="1080" height="720"></canvas>
 
     <!-- Memuat semua modul game. Urutan SANGAT penting! -->
+    <script src="js/pathfinding.js" type="module"></script> <!-- TAMBAHKAN INI -->
     <script src="js/particle.js" type="module"></script>
     <script src="js/minion.js" type="module"></script>
     <script src="js/tower.js" type="module"></script>

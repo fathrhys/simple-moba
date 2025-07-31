@@ -1,0 +1,1154 @@
+ okey makasih mantap bisa berjalan, next aku ingin kamu membuat logika dimana ketika klik kanan maka akan menyesuaikan lokasi yang di klik, meskipun harus berputar, seperti game dota dan lol kan ada kyk line dimana posisi garis arah yang di klik paham ga ? 
+ buatkan versi full code nya supaya aku  bisa langsung ganti semua isi file nya
+
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode>   ls
+
+
+    Directory: D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----         7/30/2025   6:35 PM                js
+-a----         7/30/2025   8:50 AM            955 index.html
+-a----         7/29/2025   2:04 PM            350 style.css
+
+
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> ls js
+
+
+    Directory: D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode\js
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----         7/30/2025   6:54 PM            529 battle-spells.js
+-a----         7/30/2025   6:54 PM            769 camera.js
+-a----         7/31/2025   6:43 AM           7747 game.js
+-a----         7/31/2025   6:42 AM          11429 hero.js
+-a----         7/30/2025   8:22 AM           3563 jungle-monster.js
+-a----         7/30/2025   6:54 PM           1509 map-config.js
+-a----         7/31/2025   6:42 AM           3509 minion.js
+-a----         7/30/2025   7:04 AM           2220 particle.js
+-a----         7/30/2025   7:36 AM           1370 shop.js
+-a----         7/30/2025   8:23 AM             89 teams.js
+-a----         7/30/2025   9:30 AM           2235 tower.js
+-a----         7/30/2025   6:52 PM           8494 ui.js
+
+
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat ind
+cat : Cannot find path 'D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode\ind' because it does not exist.
+At line:1 char:1
++ cat ind
++ ~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (D:\SMK\12\PROJE...moba-vscode\ind:String) [Get-Content], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetContentCommand
+ 
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\index.html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple MOBA v5 - Informative UI!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Prototipe MOBA v5 - The Smart Interface</h1>
+    <p>Arahkan mouse ke ikon skill untuk info. Klik tombol '+' untuk upgrade. Klik kanan untuk bergerak.</p>
+    <canvas id="gameCanvas" width="1080" height="720"></canvas>
+
+    <!-- Memuat semua modul game. Urutan SANGAT penting! -->
+    <script src="js/particle.js" type="module"></script>
+    <script src="js/minion.js" type="module"></script>
+    <script src="js/tower.js" type="module"></script>
+    <script src="js/shop.js" type="module"></script>
+    <script src="js/ui.js" type="module"></script>
+    <script src="js/hero.js" type="module"></script>
+    <script src="js/game.js" type="module"></script>
+</body>
+</html>
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\style.css
+body {
+    background-color: #2c3e50; /* Biru gelap */
+    color: #ecf0f1; /* Putih keabuan */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 20px;
+}
+
+canvas {
+    background-color: #34495e; /* Biru abu-abu */
+    border: 3px solid #ecf0f1;
+    border-radius: 5px;
+}
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\battle-spells.js
+// js/battle-spells.js
+export const BATTLE_SPELLS = {
+    recall: {
+        key: 'd',
+        name: 'Recall',
+        cooldown: 180, // 3 menit
+        channelTime: 8, // 8 detik
+        description: "Setelah menyalurkan selama 8 detik, teleportasi kembali ke base."
+    },
+    regen: {
+        key: 'f',
+        name: 'Regen',
+        cooldown: 120, // 2 menit
+        duration: 5, // 5 detik
+        regenAmount: 20, // 20 HP per detik
+        description: "Memulihkan 20 HP per detik selama 5 detik."
+    }
+};
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\camera.js
+// js/camera.js
+export default class Camera {
+    constructor(canvas, worldWidth, worldHeight) {
+        this.canvas = canvas;
+        this.worldWidth = worldWidth;
+        this.worldHeight = worldHeight;
+        this.x = 0;
+        this.y = 0;
+    }
+
+    update(target) {
+        this.x = target.x - this.canvas.width / 2;
+        this.y = target.y - this.canvas.height / 2;
+
+        // Batasi kamera agar tidak keluar dari dunia
+        this.x = Math.max(0, Math.min(this.x, this.worldWidth - this.canvas.width));
+        this.y = Math.max(0, Math.min(this.y, this.worldHeight - this.canvas.height));
+    }
+
+    apply(ctx) {
+        ctx.translate(-this.x, -this.y);
+    }
+
+    reset(ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+}
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\game.js
+// js/game.js
+import { TEAM } from './teams.js';
+import { mapConfig } from './map-config.js';
+import Camera from './camera.js';
+import Hero from './hero.js';
+import Tower from './tower.js';
+import Minion from './minion.js';
+import JungleMonster from './jungle-monster.js';
+import Particle from './particle.js';
+import { UI } from './ui.js';
+import { Shop } from './shop.js';
+import { BATTLE_SPELLS } from './battle-spells.js';
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const shop = new Shop();
+const ui = new UI(canvas, shop);
+
+const camera = new Camera(canvas, mapConfig.world.width, mapConfig.world.height);
+const player = new Hero(mapConfig.basePosition[TEAM.PLAYER].x, mapConfig.basePosition[TEAM.PLAYER].y);
+let towers = [];
+let minions = [];
+let jungleMonsters = [];
+let particles = [];
+let hoveredSkillKey = null;
+let lastTime = 0;
+let minionSpawnTimer = 20;
+
+function setupMap() {
+    mapConfig.towers.forEach(t => towers.push(new Tower(t.x, t.y, t.team)));
+    mapConfig.jungleCamps.forEach(c => jungleMonsters.push(new JungleMonster(c.x, c.y, c)));
+}
+
+function getEntityAt(worldX, worldY, includeAllies = false) {
+    let allTargets = [
+        ...towers.filter(t => t.team !== TEAM.PLAYER),
+        ...minions.filter(m => m.team !== TEAM.PLAYER),
+        ...jungleMonsters
+    ];
+
+    // Jika kita ingin bisa menarget ally (untuk deny)
+    if (includeAllies) {
+        allTargets.push(...minions.filter(m => m.team === TEAM.PLAYER));
+    }
+
+    for (const target of allTargets) {
+        if (target.hp > 0) {
+            const distance = Math.sqrt(Math.pow(target.x - worldX, 2) + Math.pow(target.y - worldY, 2));
+            if (distance <= target.size + 5) { return target; }
+        }
+    }
+    return null;
+}
+
+function getEnemiesFor(entity) {
+    const allEntities = [player, ...towers, ...minions, ...jungleMonsters];
+    // Minion kini bisa menarget minion musuh dan tower
+    if (entity.constructor.name === "Minion") {
+        const enemyTeam = (entity.team === TEAM.PLAYER) ? TEAM.ENEMY : TEAM.PLAYER;
+        return [
+            ...minions.filter(e => e.hp > 0 && e.team === enemyTeam),
+            ...towers.filter(e => e.hp > 0 && e.team === enemyTeam),
+        ];
+    }
+    return allEntities.filter(e => e.hp > 0 && e.team !== entity.team && e.team !== TEAM.NEUTRAL);
+}
+
+function getAllAttackable(entity) {
+    const allEntities = [player, ...minions, ...towers];
+    return allEntities.filter(e => e.hp > 0 && e.team !== TEAM.NEUTRAL);
+}
+
+function createParticle(x, y, type, target = null, damage = 0, owner = null) {
+    particles.push(new Particle(x, y, type, target, damage, owner));
+}
+
+function gameLoop(timestamp) {
+    const deltaTime = (timestamp - lastTime) / 1000 || 0;
+    lastTime = timestamp;
+
+    camera.update(player);
+
+    minionSpawnTimer -= deltaTime;
+    if (minionSpawnTimer <= 0) {
+        for (const laneName in mapConfig.lanes) {
+            const spawnPointPlayer = mapConfig.basePosition[TEAM.PLAYER];
+            const spawnPointEnemy = mapConfig.basePosition[TEAM.ENEMY];
+            for (let i = 0; i < 5; i++) {
+                minions.push(new Minion(spawnPointPlayer.x - i*20, spawnPointPlayer.y, TEAM.PLAYER, mapConfig.lanes[laneName]));
+                minions.push(new Minion(spawnPointEnemy.x + i*20, spawnPointEnemy.y, TEAM.ENEMY, [...mapConfig.lanes[laneName]].reverse()));
+            }
+        }
+        minionSpawnTimer = 30;
+    }
+
+    player.update(deltaTime, createParticle, () => getEnemiesFor(player));
+    towers.forEach(t => t.update(deltaTime, getEnemiesFor(t), createParticle));
+    minions.forEach(m => m.update(deltaTime, getEnemiesFor(m), createParticle));
+    jungleMonsters.forEach(j => j.update(deltaTime, getAllAttackable(j), createParticle));
+    particles.forEach(p => p.update(deltaTime));
+
+    minions = minions.filter(m => !m.shouldBeRemoved);
+    jungleMonsters = jungleMonsters.filter(j => !j.shouldBeRemoved);
+    particles = particles.filter(p => !p.shouldBeRemoved);
+
+    camera.reset(ctx);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    camera.apply(ctx);
+
+    // --- START: GAMBAR VISUAL MAP ---
+    // Gambar Latar Belakang Dasar (Area Rumput/Tanah)
+    ctx.fillStyle = '#16a085'; // Warna hijau tua untuk rumput
+    ctx.fillRect(0, 0, mapConfig.world.width, mapConfig.world.height);
+
+    // Gambar Jalur (Lanes)
+    ctx.fillStyle = '#27ae60'; // Warna hijau lebih terang untuk jalur
+    ctx.fillRect(100, 200, 2800, 200); // Top Lane
+    ctx.fillRect(100, 900, 2800, 200); // Mid Lane
+    ctx.fillRect(100, 1600, 2800, 200); // Bottom Lane
+    // --- END: GAMBAR VISUAL MAP ---
+
+
+    // Gambar Latar Belakang Dunia
+    ctx.fillStyle = '#1e272e';
+    ctx.fillRect(0, 0, mapConfig.world.width, mapConfig.world.height);
+
+    // Gambar Tembok
+    ctx.fillStyle = '#2c3e50';
+    mapConfig.walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
+
+    towers.forEach(t => t.draw(ctx));
+    minions.forEach(m => m.draw(ctx));
+    jungleMonsters.forEach(j => j.draw(ctx));
+    player.draw(ctx);
+    particles.forEach(p => p.draw(ctx));
+
+    ctx.restore();
+
+    ui.draw(ctx, player, hoveredSkillKey);
+
+    requestAnimationFrame(gameLoop);
+}
+
+canvas.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if(player.isDead) return;
+    const rect = canvas.getBoundingClientRect();
+    const worldX = e.clientX - rect.left + camera.x;
+    const worldY = e.clientY - rect.top + camera.y;
+
+    // Cek apakah target adalah minion kawan yang bisa di-deny
+    const potentialTarget = getEntityAt(worldX, worldY, true); // `true` untuk memasukkan ally
+    if (potentialTarget && potentialTarget.team === TEAM.PLAYER && potentialTarget.constructor.name === 'Minion') {
+        // Hanya bisa deny jika HP minion di bawah 50%
+        if (potentialTarget.hp / potentialTarget.maxHp < 0.5) {
+            player.setAttackTarget(potentialTarget);
+        } else {
+            player.clearAttackTarget();
+            player.moveTo(worldX, worldY);
+        }
+    } else if (potentialTarget) { // Target musuh atau jungle
+        player.setAttackTarget(potentialTarget);
+    } else { // Tidak ada target, hanya bergerak
+        player.clearAttackTarget();
+        player.moveTo(worldX, worldY);
+    }
+});
+
+
+window.addEventListener('keydown', e => {
+    const key = e.key.toLowerCase();
+    if (player.skills[key]) {
+        player.useSkill(key, () => getEnemiesFor(player), createParticle);
+    } else if (key === BATTLE_SPELLS.recall.key || (BATTLE_SPELLS.regen && key === BATTLE_SPELLS.regen.key)) {
+        player.useBattleSpell(key);
+    } else if (key === 'b') {
+        shop.toggle();
+    } else if (shop.isOpen && !isNaN(parseInt(key))) {
+        const itemId = Object.keys(shop.items)[parseInt(key) - 1];
+        if (itemId) shop.buyItem(player, itemId);
+    }
+});
+
+canvas.addEventListener('click', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const clickedSkillKey = ui.checkUpgradeButtonClick(mouseX, mouseY);
+    if (clickedSkillKey) { player.upgradeSkill(clickedSkillKey); }
+});
+
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    hoveredSkillKey = ui.checkSkillIconHover(mouseX, mouseY);
+});
+
+canvas.addEventListener('mouseout', e => { hoveredSkillKey = null; });
+
+setupMap();
+requestAnimationFrame(gameLoop);
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\hero.js
+// js/hero.js
+import { TEAM } from './teams.js';
+import { BATTLE_SPELLS } from './battle-spells.js';
+import { mapConfig } from './map-config.js';
+
+export default class Hero {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.size = 15;
+        this.color = '#3498db'; this.targetX = x; this.targetY = y;
+        this.team = TEAM.PLAYER;
+        this.isDead = false;
+        this.respawnTimer = 0;
+        this.respawnTime = 5;
+        this.battleSpells = {
+            recall: { data: BATTLE_SPELLS.recall, lastUsed: -Infinity, isChanneling: false, channelEndTime: 0 },
+            regen: { data: BATTLE_SPELLS.regen, lastUsed: -Infinity },
+        };
+        this.level = 1; this.xp = 0; this.gold = 600;
+        this.skillPoints = 1; this.items = [];
+        this.baseMaxHp = 300; this.baseDamage = 30; this.baseSpeed = 200;
+        this.totalMaxHp = 0; this.totalDamage = 0; this.totalSpeed = 0;
+        this.totalReturnDamage = 0;
+        this.hp = this.baseMaxHp;
+        this.attackTarget = null; this.attackRange = 150;
+        this.attackCooldown = 1.2; this.lastAttackTime = 0;
+        this.skills = {
+            q: { key: 'q', level: 0, maxLevel: 5, cooldown: 5, lastUsed: -Infinity, name: 'Magic Bolt', description: "Menembakkan proyektil sihir ke musuh terdekat.", getDynamicValues: (hero) => ({
+damage: 50 + hero.skills.q.level * 25 + hero.totalDamage * 0.2 })},
+            w: { key: 'w', level: 0, maxLevel: 5, cooldown: 12, lastUsed: -Infinity, name: 'Adrenaline Rush', description: "Meningkatkan kecepatan gerak secara drastis untuk sementara.", getDynamicValues: (hero) => ({ speed_boost: 80 + hero.skills.w.level * 10, duration: 2 + hero.skills.w.level * 0.2 })},
+            e: { key: 'e', level: 0, maxLevel: 5, cooldown: 8, lastUsed: -Infinity, name: 'Defensive Stance', description: "Menguatkan pertahanan, mengurangi damage yang diterima untuk sementara.",
+getDynamicValues: (hero) => ({ damage_reduction: 10 + hero.skills.e.level * 5, duration: 3 })},
+            r: { key: 'r', level: 0, maxLevel: 3, cooldown: 60, lastUsed: -Infinity, name: 'Meteor Strike', description: "Menjatuhkan meteor besar ke tower musuh.", getDynamicValues: (hero) => ({ damage: 200 + hero.skills.r.level * 150 + hero.totalDamage * 0.5 })}
+        };
+        this.activeEffects = [];
+        this.recalculateStats();
+    }
+
+    setAttackTarget(target) { this.attackTarget = target; }
+    clearAttackTarget() { this.attackTarget = null; }
+
+    respawn() {
+        this.isDead = false;
+        const base = mapConfig.basePosition[this.team];
+        this.x = base.x; this.y = base.y;
+        this.targetX = base.x; this.targetY = base.y;
+        this.hp = this.totalMaxHp;
+        this.attackTarget = null;
+    }
+
+    takeDamage(damage, source) {
+        if (this.isDead) return;
+        this.stopChannelingRecall();
+
+        let finalDamage = damage;
+        const defenseEffect = this.activeEffects.find(eff => eff.type === 'defense_boost');
+        if (defenseEffect) { finalDamage *= (1 - defenseEffect.value / 100); }
+        this.hp -= finalDamage;
+
+        if (this.totalReturnDamage > 0 && source && source.takeDamage) { source.takeDamage(this.totalReturnDamage, this); }
+
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.isDead = true;
+            this.respawnTimer = this.respawnTime + this.level * 2;
+            this.attackTarget = null;
+            this.activeEffects = [];
+        }
+    }
+
+    useBattleSpell(key) {
+        if (this.isDead) return;
+        const now = performance.now() / 1000;
+        if (key === this.battleSpells.recall.data.key) {
+            const spell = this.battleSpells.recall;
+            if (now > spell.lastUsed + spell.data.cooldown) {
+                this.isChanneling = true;
+                this.channelEndTime = now + spell.data.channelTime;
+            }
+        }
+    }
+
+    stopChannelingRecall() {
+        if (this.battleSpells.recall.isChanneling) {
+            this.battleSpells.recall.isChanneling = false;
+        }
+    }
+
+    update(dt, createParticle) {
+        if (this.isDead) {
+            this.respawnTimer -= dt;
+            if (this.respawnTimer <= 0) { this.respawn(); }
+            return;
+        }
+
+        const now = performance.now() / 1000;
+        this.activeEffects = this.activeEffects.filter(eff => now < eff.endTime);
+
+        const recall = this.battleSpells.recall;
+        if (recall.isChanneling) {
+            if (now >= recall.channelEndTime) {
+                recall.isChanneling = false;
+                recall.lastUsed = now;
+                const base = mapConfig.basePosition[this.team];
+                this.x = base.x; this.y = base.y;
+                this.targetX = this.x; this.targetY = this.y;
+                this.attackTarget = null;
+                return;
+            }
+            return;
+        }
+
+        let currentSpeed = this.totalSpeed;
+        const speedBoostEffect = this.activeEffects.find(eff => eff.type === 'speed_boost');
+        if (speedBoostEffect) { currentSpeed *= (1 + speedBoostEffect.value / 100); }
+
+        let nextX = this.x, nextY = this.y, isMoving = false;
+        let targetPoint = { x: this.targetX, y: this.targetY };
+
+        if (this.attackTarget && this.attackTarget.hp > 0) {
+            targetPoint = { x: this.attackTarget.x, y: this.attackTarget.y };
+            const dx = targetPoint.x - this.x;
+            const dy = targetPoint.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance <= this.attackRange) {
+                this.basicAttack(createParticle);
+            } else {
+                isMoving = true;
+            }
+        } else {
+            const dx = this.targetX - this.x;
+            const dy = this.targetY - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > 1) {
+                isMoving = true;
+            }
+        }
+
+        if (isMoving) {
+            this.stopChannelingRecall();
+            const dx = targetPoint.x - this.x;
+            const dy = targetPoint.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > 0) {
+                nextX += (dx / distance) * currentSpeed * dt;
+                nextY += (dy / distance) * currentSpeed * dt;
+
+                let canMove = true;
+                for (const wall of mapConfig.walls) {
+                    if (nextX + this.size > wall.x && nextX - this.size < wall.x + wall.width &&
+                        nextY + this.size > wall.y && nextY - this.size < wall.y + wall.height) {
+                        canMove = false;
+                        break;
+                    }
+                }
+                if (canMove) { this.x = nextX; this.y = nextY; }
+            }
+        }
+    }
+
+    draw(ctx) {
+        if (this.isDead) return;
+        const originalColor = this.color;
+        if (this.activeEffects.find(e => e.type === 'speed_boost')) ctx.fillStyle = '#f39c12';
+        else if (this.activeEffects.find(e => e.type === 'defense_boost')) ctx.fillStyle = '#a569bd';
+        else ctx.fillStyle = originalColor;
+
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = originalColor;
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.attackRange, 0, Math.PI * 2); ctx.stroke();
+
+        const recall = this.battleSpells.recall;
+        if (recall.isChanneling) {
+            const now = performance.now() / 1000;
+            const channelProgress = (now - (recall.channelEndTime - recall.data.channelTime)) / recall.data.channelTime;
+            const barW = 50, barH = 8;
+            ctx.fillStyle = '#555'; ctx.fillRect(this.x - barW/2, this.y + this.size + 5, barW, barH);
+            ctx.fillStyle = '#3498db'; ctx.fillRect(this.x - barW/2, this.y + this.size + 5, barW * channelProgress, barH);
+        }
+    }
+
+    basicAttack(createParticle) {
+        const now = performance.now() / 1000;
+        if (this.attackTarget && this.attackTarget.hp > 0 && now > this.lastAttackTime + this.attackCooldown) {
+            createParticle(this.x, this.y, 'projectile', this.attackTarget, this.totalDamage, this);
+            this.lastAttackTime = now;
+        }
+    }
+
+    recalculateStats() {
+        let bonusHp = 0, bonusDamage = 0, bonusSpeed = 0, bonusReturnDamage = 0;
+        this.items.forEach(item => {
+            bonusHp += item.stats.maxHp || 0; bonusDamage += item.stats.damage || 0;
+            bonusSpeed += item.stats.speed || 0; bonusReturnDamage += item.stats.returnDamage || 0;
+        });
+        const oldMaxHp = this.totalMaxHp;
+        this.totalMaxHp = Math.round(this.baseMaxHp + (this.level - 1) * 50 + bonusHp);
+        this.totalDamage = Math.round(this.baseDamage + (this.level - 1) * 3 + bonusDamage);
+        this.totalSpeed = this.baseSpeed + bonusSpeed;
+        this.totalReturnDamage = bonusReturnDamage;
+        if(this.hp > 0) {
+            this.hp += (this.totalMaxHp - oldMaxHp);
+            if (this.hp > this.totalMaxHp) this.hp = this.totalMaxHp;
+        }
+    }
+
+    xpForLevel(level) { return Math.floor(100 * Math.pow(level, 1.5)); }
+    addXp(amount) { if (this.hp > 0) { this.xp += amount; while (this.xp >= this.xpForLevel(this.level + 1)) { this.levelUp(); } } }
+    levelUp() { this.level++; this.skillPoints++; const p = this.hp/this.totalMaxHp || 1; this.recalculateStats(); this.hp = this.totalMaxHp * p; }
+
+    canUpgradeSkill(key) {
+        const skill = this.skills[key];
+        if (this.skillPoints <= 0 || skill.level >= skill.maxLevel) return false;
+        if (skill.key === 'r' && ![6, 12, 18].includes(this.level)) return false;
+        return true;
+    }
+
+    upgradeSkill(key) { if (this.canUpgradeSkill(key)) { this.skills[key].level++; this.skillPoints--; } }
+
+    useSkill(key, getPotentialTargets, createParticle) {
+        const skill = this.skills[key]; const now = performance.now() / 1000;
+        if (!skill || skill.level === 0 || now < skill.lastUsed + skill.cooldown || this.isDead) return;
+        this.stopChannelingRecall();
+        skill.lastUsed = now; const dyn = skill.getDynamicValues(this);
+        const targets = getPotentialTargets();
+        switch (key) {
+            case 'q': let t1=targets.find(t=>t.hp>0); if(t1) createParticle(this.x,this.y,'projectile',t1,dyn.damage,this); break;
+            case 'w': this.activeEffects.push({ type: 'speed_boost', value: dyn.speed_boost, endTime: now + dyn.duration }); break;
+            case 'e': this.activeEffects.push({ type: 'defense_boost', value: dyn.damage_reduction, endTime: now + dyn.duration }); break;
+            case 'r': let t2=targets.find(t=>t.constructor.name==="Tower"&&t.hp>0); if(t2) createParticle(this.x,this.y,'ultimate_projectile',t2,dyn.damage,this); break;
+        }
+    }
+
+    grantReward(type, amount) {
+        if(this.isDead) return;
+        if (type === 'gold') {
+            this.gold += amount;
+        } else if (type === 'xp') {
+            this.addXp(amount);
+        }
+    }
+    moveTo(x, y) { if (!this.isDead) { this.targetX = x; this.targetY = y; } }
+}
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\jungle-monster.js
+// js/jungle-monster.js
+import { TEAM } from './teams.js';
+
+export default class JungleMonster {
+    constructor(x, y, config) {
+        this.spawnX = x; this.spawnY = y;
+        this.x = x; this.y = y;
+        this.size = 20; this.color = '#f39c12'; // Oranye
+        this.team = TEAM.NEUTRAL;
+        this.hp = 400; this.maxHp = 400;
+        this.attackDamage = 15; this.attackRange = 50;
+        this.attackCooldown = 2; this.lastAttackTime = 0;
+        this.leashRange = 200; // Jarak maksimal dari spawn point
+
+        this.target = null;
+        this.isAggro = false;
+        this.shouldBeRemoved = false;
+
+        // Info hadiah
+        this.type = config.type;
+        this.rewardType = config.rewardType;
+        this.rewardAmount = config.rewardAmount;
+        this.buffDuration = config.buffDuration;
+    }
+
+    takeDamage(damage, attacker) {
+        this.hp -= damage;
+        // Jika diserang, jadikan penyerang sebagai target (aggro)
+        if (!this.isAggro) {
+            this.isAggro = true;
+            this.target = attacker;
+        }
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.shouldBeRemoved = true;
+            if (attacker && attacker.grantReward) {
+                // Berikan hadiah ke pembunuh
+                attacker.grantReward(this.rewardType, this.rewardAmount, this.buffDuration);
+            }
+        }
+    }
+
+    update(dt, allEntities, createParticle) {
+        if (!this.isAggro || !this.target || this.target.hp <= 0) {
+            // Jika tidak ada target, kembali ke spawn point jika perlu
+            const distToSpawn = Math.sqrt(Math.pow(this.spawnX - this.x, 2) + Math.pow(this.spawnY - this.y, 2));
+            if (distToSpawn > 5) {
+                const dx = this.spawnX - this.x;
+                const dy = this.spawnY - this.y;
+                this.x += (dx / distToSpawn) * 50 * dt;
+                this.y += (dy / distToSpawn) * 50 * dt;
+            }
+            if (this.hp < this.maxHp) this.hp += 10 * dt; // Regenerasi HP
+            return;
+        }
+
+        const distToTarget = Math.sqrt(Math.pow(this.target.x - this.x, 2) + Math.pow(this.target.y - this.y, 2));
+        const distToSpawn = Math.sqrt(Math.pow(this.spawnX - this.x, 2) + Math.pow(this.spawnY - this.y, 2));
+
+        // Jika target keluar dari leash range, reset
+        if (distToSpawn > this.leashRange) {
+            this.isAggro = false;
+            this.target = null;
+            return;
+        }
+
+        // Serang jika dalam jangkauan
+        if (distToTarget <= this.attackRange) {
+            const now = performance.now() / 1000;
+            if (now > this.lastAttackTime + this.attackCooldown) {
+                this.target.takeDamage(this.attackDamage, this);
+                this.lastAttackTime = now;
+            }
+        } else { // Bergerak menuju target
+            this.x += (this.target.x - this.x) / distToTarget * 70 * dt;
+            this.y += (this.target.y - this.y) / distToTarget * 70 * dt;
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        // HP Bar
+        const hpBarWidth = 40; const hpRatio = this.hp / this.maxHp;
+        ctx.fillStyle='#e74c3c'; ctx.fillRect(this.x-hpBarWidth/2, this.y-this.size-15, hpBarWidth, 8);
+        ctx.fillStyle='#2ecc71'; ctx.fillRect(this.x-hpBarWidth/2, this.y-this.size-15, hpBarWidth*hpRatio, 8);
+    }
+}
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\map-config.js
+// js/map-config.js
+import { TEAM } from './teams.js';
+
+export const mapConfig = {
+    world: {
+        width: 3000,
+        height: 2000,
+    },
+    basePosition: {
+        [TEAM.PLAYER]: { x: 150, y: 1000 },
+        [TEAM.ENEMY]: { x: 2850, y: 1000 },
+    },
+    lanes: {
+        top: [ { x: 300, y: 300 }, { x: 1000, y: 300 }, { x: 2000, y: 300 }, { x: 2700, y: 300 } ],
+        mid: [ { x: 400, y: 1000 }, { x: 1000, y: 1000 }, { x: 2000, y: 1000 }, { x: 2600, y: 1000 } ],
+        bottom: [ { x: 300, y: 1700 }, { x: 1000, y: 1700 }, { x: 2000, y: 1700 }, { x: 2700, y: 1700 } ]
+    },
+    towers: [
+        { x: 600, y: 300, team: TEAM.PLAYER }, { x: 400, y: 1000, team: TEAM.PLAYER }, { x: 600, y: 1700, team: TEAM.PLAYER },
+        { x: 2400, y: 300, team: TEAM.ENEMY }, { x: 2600, y: 1000, team: TEAM.ENEMY }, { x: 2400, y: 1700, team: TEAM.ENEMY },
+    ],
+    jungleCamps: [
+        { x: 900, y: 700, type: 'Goblin', rewardType: 'gold', rewardAmount: 100 },
+        { x: 2100, y: 1300, type: 'Golem', rewardType: 'xp_buff', rewardAmount: 200, buffDuration: 30 },
+    ],
+    walls: [
+        // Batas luar peta
+        { x: 0, y: 0, width: 3000, height: 100 },
+        { x: 0, y: 1900, width: 3000, height: 100 },
+        { x: 0, y: 100, width: 100, height: 1800 },
+        { x: 2900, y: 100, width: 100, height: 1800 },
+        // Tembok internal
+        { x: 1200, y: 500, width: 600, height: 100 },
+        { x: 1450, y: 1100, width: 100, height: 400 },
+    ]
+};
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\minion.js
+// js/minion.js
+import { TEAM } from './teams.js';
+
+export default class Minion {
+    constructor(x, y, team, path) {
+        this.x = x; this.y = y; this.size = 10;
+        this.team = team; this.color = team === TEAM.PLAYER ? '#2980b9' : '#c0392b';
+        this.path = path; this.pathIndex = 0;
+        this.speed = 100;
+        this.maxHp = 150; this.hp = this.maxHp;
+        this.damage = 15;
+        this.attackRange = 100;
+        this.attackCooldown = 1.5;
+        this.lastAttackTime = 0;
+        this.shouldBeRemoved = false;
+        this.attackTarget = null;
+    }
+
+    findTarget(potentialTargets) {
+        let closestTarget = null;
+        let closestDistance = this.attackRange;
+
+        for (const target of potentialTargets) {
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestTarget = target;
+            }
+        }
+        this.attackTarget = closestTarget;
+    }
+
+    takeDamage(damage, source) {
+        this.hp -= damage;
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.shouldBeRemoved = true;
+            // Hanya beri hadiah jika pembunuhnya adalah tim musuh
+            if (source && source.team !== this.team && source.grantReward) {
+                source.grantReward('gold', 25);
+                source.grantReward('xp', 40);
+            }
+        }
+    }
+
+    update(dt, potentialTargets, createParticle) {
+        if (this.hp <= 0) return;
+
+        this.findTarget(potentialTargets);
+
+        if (this.attackTarget && this.attackTarget.hp > 0) {
+            // Berhenti dan serang jika ada target dalam jangkauan
+            const now = performance.now() / 1000;
+            if (now > this.lastAttackTime + this.attackCooldown) {
+                createParticle(this.x, this.y, 'minion_projectile', this.attackTarget, this.damage, this);
+                this.lastAttackTime = now;
+            }
+        } else {
+            // Jika tidak ada target, lanjutkan perjalanan
+            if (this.pathIndex < this.path.length) {
+                const targetPoint = this.path[this.pathIndex];
+                const dx = targetPoint.x - this.x;
+                const dy = targetPoint.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 5) {
+                    this.pathIndex++;
+                } else {
+                    this.x += (dx / distance) * this.speed * dt;
+                    this.y += (dy / distance) * this.speed * dt;
+                }
+            } else {
+                // Jika sudah sampai ujung path, serang tower terdekat atau entitas musuh
+                this.findTarget(potentialTargets.filter(t => t.constructor.name === "Tower"));
+            }
+        }
+    }
+
+    draw(ctx) {
+        if (this.hp <= 0) return;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Health bar
+        const barW = 30, barH = 5;
+        ctx.fillStyle = '#c0392b';
+        ctx.fillRect(this.x - barW / 2, this.y - this.size - barH - 2, barW, barH);
+        ctx.fillStyle = '#2ecc71';
+        ctx.fillRect(this.x - barW / 2, this.y - this.size - barH - 2, barW * (this.hp / this.maxHp), barH);
+    }
+}
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\particle.js
+// js/particle.js
+export default class Particle {
+    constructor(x, y, type, target = null, damage = 0, owner = null) {
+        this.x = x;
+        this.y = y;
+        this.type = type;
+        this.target = target;
+        this.damage = damage;
+        this.owner = owner; // Menyimpan siapa yang menembakkan proyektil ini
+
+        if (type === 'projectile' || type === 'ultimate_projectile') {
+            this.speed = (type === 'ultimate_projectile') ? 600 : 400;
+            this.size = (type === 'ultimate_projectile') ? 15 : 5;
+            this.color = (type === 'ultimate_projectile') ? '#f1c40f' : '#ffffff';
+        } else if (type === 'hit_spark') {
+            this.size = Math.random() * 3 + 1;
+            this.color = 'orange';
+            this.lifetime = 0.2;
+            this.velX = (Math.random() - 0.5) * 150;
+            this.velY = (Math.random() - 0.5) * 150;
+        }
+
+        this.shouldBeRemoved = false;
+    }
+
+    update(dt) {
+        if (this.type === 'projectile' || this.type === 'ultimate_projectile') {
+            if (!this.target || this.target.hp <= 0) {
+                this.shouldBeRemoved = true;
+                return;
+            }
+            const dx = this.target.x - this.x;
+            const dy = this.target.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < 10) {
+                // Saat mengenai target, berikan damage dan beritahu siapa yang membunuh
+                this.target.takeDamage(this.damage, this.owner);
+                this.shouldBeRemoved = true;
+            } else {
+                this.x += (dx / distance) * this.speed * dt;
+                this.y += (dy / distance) * this.speed * dt;
+            }
+        } else if (this.type === 'hit_spark') {
+            this.x += this.velX * dt;
+            this.y += this.velY * dt;
+            this.lifetime -= dt;
+            if (this.lifetime <= 0) {
+                this.shouldBeRemoved = true;
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\shop.js
+// js/shop.js
+const ITEMS = {
+    'item_boots': { name: 'Boots of Speed', cost: 400, stats: { speed: 25 }, desc: "Meningkatkan kecepatan gerak." },
+    'item_sword': { name: 'Basic Sword', cost: 500, stats: { damage: 15 }, desc: "Meningkatkan damage serangan dasar." },
+    'item_health': { name: 'Health Crystal', cost: 450, stats: { maxHp: 150 }, desc: "Meningkatkan maksimum HP." },
+    'item_armor': { name: 'Spiked Armor', cost: 1800, stats: { maxHp: 100, returnDamage: 15 }, desc: "Saat diserang, memantulkan 15 physical damage kembali ke penyerang." },
+    'item_ultimate_orb': { name: 'Ultimate Orb', cost: 2100, stats: { damage: 25, maxHp: 250, speed: 10 }, desc: "Item kuat yang meningkatkan semua status." },
+};
+
+export class Shop {
+    constructor() {
+        this.isOpen = false;
+        this.items = ITEMS;
+    }
+
+    toggle() {
+        this.isOpen = !this.isOpen;
+    }
+
+    buyItem(hero, itemId) {
+        if (!this.isOpen || !this.items[itemId]) return;
+        const item = this.items[itemId];
+        if (hero.gold >= item.cost && hero.items.length < 6) {
+            hero.gold -= item.cost;
+            hero.items.push(item);
+            hero.recalculateStats();
+            console.log(`Hero membeli ${item.name}!`);
+        } else {
+            console.log("Tidak cukup gold atau inventory penuh!");
+        }
+    }
+}
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\teams.js
+// js/teams.js
+export const TEAM = {
+    PLAYER: 0,
+    ENEMY: 1,
+    NEUTRAL: 2,
+};
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\tower.js
+// js/tower.js
+import { TEAM } from './teams.js'; // <-- BARIS INI YANG HILANG DAN KRUSIAL
+
+export default class Tower {
+    constructor(x, y, team) {
+        this.x = x; this.y = y; this.size = 35;
+        this.team = team;
+        this.color = (team === TEAM.PLAYER) ? '#3498db' : '#e74c3c'; // Biru untuk Player, Merah untuk Enemy
+        this.hp = 1500; this.maxHp = 1500;
+        this.attackRange = 250; this.attackDamage = 25;
+        this.attackCooldown = 2; this.lastAttackTime = 0;
+        this.target = null; this.goldValue = 200;
+    }
+
+    takeDamage(damage, killer) {
+        this.hp -= damage;
+        if (this.hp <= 0) {
+            this.hp = 0; this.color = '#7f8c8d';
+            if (killer && killer.team !== this.team && killer.addXp) { killer.gold += this.goldValue; }
+        }
+    }
+
+    update(dt, enemyEntities, createParticle) {
+        if (this.hp <= 0) return;
+
+        this.target = null;
+        let minDistance = Infinity;
+        let potentialTargets = enemyEntities.sort((a,b) => (a.constructor.name === "Minion" ? -1 : 1));
+
+        for (const enemy of potentialTargets) {
+            if (enemy.hp > 0) {
+                const distance = Math.sqrt(Math.pow(enemy.x - this.x, 2) + Math.pow(enemy.y - this.y, 2));
+                if (distance <= this.attackRange && distance < minDistance) {
+                    minDistance = distance;
+                    this.target = enemy;
+                }
+            }
+        }
+
+        if (this.target) {
+            const now = performance.now() / 1000;
+            if (now > this.lastAttackTime + this.attackCooldown) {
+                createParticle(this.x, this.y, 'projectile', this.target, this.attackDamage, this);
+                this.lastAttackTime = now;
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color; ctx.fillRect(this.x-this.size/2, this.y-this.size/2, this.size, this.size);
+        if(this.hp > 0){
+            const hpW=80, hpR=this.hp/this.maxHp;
+            ctx.fillStyle='#e74c3c';ctx.fillRect(this.x-hpW/2,this.y-this.size/2-20,hpW,10);
+            ctx.fillStyle='#2ecc71';ctx.fillRect(this.x-hpW/2,this.y-this.size/2-20,hpW*hpR,10);
+        }
+    }
+}
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode> cat .\js\ui.js
+// js/ui.js
+export class UI {
+    constructor(canvas, shop) {
+        this.canvas = canvas;
+        this.shop = shop;
+        this.upgradeButtons = [];
+        this.skillIconRects = [];
+    }
+
+    draw(ctx, hero, hoveredSkillKey) {
+        this.upgradeButtons = [];
+        this.skillIconRects = [];
+
+        if (!hero.isDead) {
+            this.drawPlayerStats(ctx, hero);
+            this.drawSkills(ctx, hero);
+            this.drawItems(ctx, hero);
+            if (this.shop.isOpen) { this.drawShop(ctx, hero); }
+            if (hoveredSkillKey) { this.drawTooltip(ctx, hero, hoveredSkillKey); }
+        } else {
+            // Tampilan saat mati
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Respawn dalam: ${hero.respawnTimer.toFixed(1)}`, this.canvas.width / 2, this.canvas.height / 2);
+        }
+    }
+
+    checkUpgradeButtonClick(mouseX, mouseY) {
+        for (const button of this.upgradeButtons) {
+            if (mouseX >= button.x && mouseX <= button.x + button.width &&
+                mouseY >= button.y && mouseY <= button.y + button.height) {
+                return button.key;
+            }
+        }
+        return null;
+    }
+
+    checkSkillIconHover(mouseX, mouseY) {
+        for (const rect of this.skillIconRects) {
+            if (mouseX >= rect.x && mouseX <= rect.x + rect.width &&
+                mouseY >= rect.y && mouseY <= rect.y + rect.height) {
+                return rect.key;
+            }
+        }
+        return null;
+    }
+
+    drawSkills(ctx, hero) {
+        const now = performance.now() / 1000;
+        Object.values(hero.skills).forEach((skill, i) => {
+            const x = 250 + i * 70, y = this.canvas.height - 100, size = 60;
+            this.skillIconRects.push({ x, y, width: size, height: size, key: skill.key });
+            ctx.fillStyle = skill.level > 0 ? '#2c3e50' : '#7f8c8d';
+            ctx.fillRect(x, y, size, size);
+            ctx.strokeStyle = 'white';
+            ctx.strokeRect(x, y, size, size);
+            ctx.fillStyle = 'white';
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(skill.key.toUpperCase(), x + size / 2, y + 40);
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillStyle = 'white';
+            ctx.fillText(skill.level, x + size - 5, y + 15);
+            if (hero.canUpgradeSkill(skill.key)) {
+                const btnSize=20, btnX=x+size-btnSize/2, btnY=y-btnSize/2;
+                ctx.fillStyle='gold'; ctx.fillRect(btnX,btnY,btnSize,btnSize);
+                ctx.strokeStyle='black'; ctx.lineWidth=2; ctx.strokeRect(btnX,btnY,btnSize,btnSize);
+                ctx.fillStyle='black'; ctx.font='20px Arial'; ctx.textAlign='center';
+                ctx.fillText('+',btnX+btnSize/2,btnY+btnSize-4);
+                this.upgradeButtons.push({x:btnX,y:btnY,width:btnSize,height:btnSize,key:skill.key});
+            }
+            const cooldownLeft = Math.max(0, (skill.lastUsed + skill.cooldown) - now);
+            if (cooldownLeft > 0) {
+                ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(x,y,size,size*(cooldownLeft/skill.cooldown));
+                ctx.fillStyle='white'; ctx.font='28px Arial'; ctx.textAlign='center';
+                ctx.fillText(cooldownLeft.toFixed(1),x+size/2,y+42);
+            }
+        });
+        ctx.lineWidth = 1;
+    }
+
+    drawTooltip(ctx, hero, skillKey) {
+        const skill = hero.skills[skillKey];
+        const dynamicValues = skill.getDynamicValues(hero);
+        const nameText = `${skill.name} (Level ${skill.level})`;
+        const descText = skill.description;
+        let valueText = "";
+        if (dynamicValues.damage !== undefined) valueText += `Damage: ${Math.round(dynamicValues.damage)}\n`;
+        if (dynamicValues.duration !== undefined) valueText += `Durasi: ${dynamicValues.duration.toFixed(1)}s\n`;
+        if (dynamicValues.speed_boost !== undefined) valueText += `Bonus Kecepatan: +${dynamicValues.speed_boost}%\n`;
+        if (dynamicValues.damage_reduction !== undefined) valueText += `Pengurangan Damage: ${dynamicValues.damage_reduction}%\n`;
+        const lines = [nameText, "---", descText, "---", ...valueText.split('\n').filter(l => l)];
+        ctx.font = '14px Arial';
+        let maxWidth = 0;
+        lines.forEach(line => {
+            const width = ctx.measureText(line).width;
+            if (width > maxWidth) maxWidth = width;
+        });
+        const boxWidth = maxWidth + 20;
+        const boxHeight = lines.length * 18 + 10;
+        const iconRect = this.skillIconRects.find(r => r.key === skillKey);
+        const boxX = iconRect.x - boxWidth / 2 + iconRect.width / 2;
+        const boxY = iconRect.y - boxHeight - 10;
+        ctx.fillStyle='rgba(0,0,0,0.85)';
+        ctx.fillRect(boxX,boxY,boxWidth,boxHeight);
+        ctx.strokeStyle='gold';
+        ctx.strokeRect(boxX,boxY,boxWidth,boxHeight);
+        ctx.fillStyle='white';
+        ctx.textAlign='left';
+        lines.forEach((line, i) => { ctx.fillText(line, boxX + 10, boxY + 20 + i * 18); });
+    }
+
+    drawPlayerStats(ctx, hero) {
+        ctx.fillStyle='rgba(0,0,0,0.7)';
+        ctx.fillRect(0,this.canvas.height-120,this.canvas.width,120);
+        const hpX=250,hpY=this.canvas.height-45,hpW=300,hpH=30;
+        ctx.fillStyle='#c0392b';
+        ctx.fillRect(hpX,hpY,hpW,hpH);
+        ctx.fillStyle='#2ecc71';
+        ctx.fillRect(hpX,hpY,hpW*(hero.hp/hero.totalMaxHp),hpH);
+        ctx.strokeStyle='white';
+        ctx.strokeRect(hpX,hpY,hpW,hpH);
+        ctx.fillStyle='white';
+        ctx.font='18px Arial';
+        ctx.textAlign='center';
+        ctx.fillText(`${Math.round(hero.hp)} / ${hero.totalMaxHp}`,hpX+hpW/2,hpY+22);
+        ctx.textAlign='left';
+        ctx.font='20px Arial';
+        ctx.fillText(`Level: ${hero.level} (${hero.skillPoints} SP)`,20,this.canvas.height-90);
+        ctx.fillText(`Gold: ${hero.gold}`,20,this.canvas.height-60);
+        const xpForNextLevel = hero.xpForLevel(hero.level+1)-hero.xpForLevel(hero.level);
+        const currentXpInLevel = hero.xp-hero.xpForLevel(hero.level);
+        const xpRatio = currentXpInLevel/xpForNextLevel;
+        ctx.fillStyle='#bdc3c7';
+        ctx.fillRect(20,this.canvas.height-45,200,10);
+        ctx.fillStyle='#f1c40f';
+        ctx.fillRect(20,this.canvas.height-45,200*xpRatio,10);
+    }
+
+    drawItems(ctx, hero) {
+        for (let i = 0; i < 6; i++) {
+            const x = 580 + i * 55, y = this.canvas.height - 100;
+            ctx.fillStyle = '#1c2833';
+            ctx.fillRect(x, y, 50, 50);
+            ctx.strokeStyle = 'gray';
+            ctx.strokeRect(x, y, 50, 50);
+            if (hero.items[i]) {
+                ctx.fillStyle = 'gold';
+                ctx.fillRect(x + 5, y + 5, 40, 40);
+                ctx.fillStyle = 'black';
+                ctx.font = '8px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(hero.items[i].name.substring(0, 5), x + 25, y + 25);
+            }
+        }
+    }
+
+    drawShop(ctx, hero) {
+        const shopX = 200, shopY = 100, shopW = 600, shopH = 400;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(shopX, shopY, shopW, shopH);
+        ctx.strokeStyle = 'gold';
+        ctx.strokeRect(shopX, shopY, shopW, shopH);
+        ctx.fillStyle = 'white';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('ITEM SHOP (Tekan B untuk Tutup)', shopX + shopW / 2, shopY + 35);
+        ctx.textAlign = 'left';
+        Object.entries(this.shop.items).forEach(([id, item], i) => {
+            const itemY = shopY + 80 + i * 60;
+            ctx.fillStyle = hero.gold >= item.cost ? 'white' : 'gray';
+            ctx.font = '18px Arial';
+            ctx.fillText(`[${i+1}] ${item.name}`, shopX + 20, itemY);
+            ctx.font = '16px Arial';
+            ctx.fillText(item.desc, shopX + 20, itemY + 25);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = hero.gold >= item.cost ? 'gold' : 'gray';
+            ctx.fillText(`${item.cost} G`, shopX + shopW - 20, itemY);
+            ctx.textAlign = 'left';
+        });
+    }
+}
+PS D:\SMK\12\PROJECT-RUMAH\GAME\simple-moba-vscode>
