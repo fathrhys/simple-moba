@@ -1,7 +1,8 @@
 // js/battle-spells.js
 export const BATTLE_SPELLS = {
+    // Tombol 'B' akan menjadi standar untuk recall
     recall: {
-        key: 'd',
+        key: 'b', // <-- Diubah dari 'd' ke 'b' agar lebih intuitif
         name: 'Recall',
         cooldown: 180, // 3 menit
         channelTime: 8, // 8 detik
@@ -11,8 +12,8 @@ export const BATTLE_SPELLS = {
         key: 'f',
         name: 'Regen',
         cooldown: 120, // 2 menit
-        duration: 5, // 5 detik
-        regenAmount: 20, // 20 HP per detik
+        duration: 5,
+        regenAmount: 20,
         description: "Memulihkan 20 HP per detik selama 5 detik."
     }
 };
